@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -12,7 +13,6 @@ func Welcome() echo.HandlerFunc {
 	}
 }
 
-/*
 func GetEmployees(db *gorm.DB) echo.HandlerFunc {
 
 	var employee Employee
@@ -30,6 +30,4 @@ func GetEmployees(db *gorm.DB) echo.HandlerFunc {
 	}
 
 	return c.JSON(http.StatusOK, employee)
-	}
-  }
-*/
+}

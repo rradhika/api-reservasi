@@ -3,15 +3,29 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 
-	"github.com/rradhika/api-reservasi/handler/handler"
+	"github.com/rradhika/api-reservasi/handler"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
+	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 )
 
 //M is exported
 type M map[string]interface{}
+
+func goDotEnvVariable(key string) string {
+
+	// load .env file
+	err := godotenv.Load(".env")
+
+	if err != nil {
+		log.Fatalf("Error loading .env file")
+	}
+
+	return os.Getenv(key)
+}
 
 func main() {
 
@@ -47,7 +61,7 @@ func main() {
 
 //StartBot to initiate bot /start
 func StartBot() {
-	bot, err := tgbotapi.NewBotAPI("1304002456:AAH8L47dO-9F5dUTfsLi6hNbJEJmuc3EywI")
+	bot, err := tgbotapi.NewBotAPI(goDotEnvVariable("BOT_TOKEN"))
 	if err != nil {
 		log.Fatal(err)
 	}
