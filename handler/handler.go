@@ -5,6 +5,8 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	"github.com/rradhika/api-reservasi/model"
+	"gorm.io/gorm"
 )
 
 func Welcome() echo.HandlerFunc {
@@ -14,20 +16,14 @@ func Welcome() echo.HandlerFunc {
 }
 
 func GetEmployees(db *gorm.DB) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		var em []*model.Employee
 
-	var employee Employee
+		if err := db.Find(&em).Error; err != nil {
+			// error handling here
+			log.Fatal(err)
+		}
 
-	dsn := "root:@tcp(localhost:3306)/spera"
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
-
-	if err != nil {
-		log.Fatal(err)
+		return c.JSON(http.StatusOK, em)
 	}
-
-	if err := db.Find(&employee).Error; err != nil {
-		// error handling here
-		log.Fatal(err)
-	}
-
-	return c.JSON(http.StatusOK, employee)
 }

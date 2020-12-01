@@ -5,11 +5,11 @@ import (
 	"log"
 	"os"
 
-	"github.com/rradhika/api-reservasi/handler"
-
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
+	"github.com/rradhika/api-reservasi/datastore"
+	"github.com/rradhika/api-reservasi/handler"
 )
 
 //M is exported
@@ -29,12 +29,18 @@ func goDotEnvVariable(key string) string {
 
 func main() {
 
+	db, err := datastore.NewDB()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	go StartBot()
+
 	e := echo.New()
 	e.GET("/", handler.Welcome())
+	e.GET("/employees", handler.GetEmployees(db))
 	_ = e.Start(":3001")
-
-	//Start the bot in a separate thread
-	go StartBot()
 
 	//To stop the program to finish and close
 	select {}
@@ -42,24 +48,6 @@ func main() {
 	//You can also use https://golang.org/pkg/sync/#WaitGroup instead.
 }
 
-/*
-func main() {
-	e := echo.New()
-	e.GET("/", func(c echo.Context) error {
-		data := M{"Message": "Hello", "Counter": 2}
-		return c.JSON(http.StatusOK, data)
-	})
-
-	e.GET("/test", func(c echo.Context) error {
-		name := c.QueryParam("name")
-		data := fmt.Sprintf("Hello %s", name)
-
-		return c.String(http.StatusOK, data)
-	})
-	e.Logger.Fatal(e.Start(":3001"))
-}*/
-
-//StartBot to initiate bot /start
 func StartBot() {
 	bot, err := tgbotapi.NewBotAPI(goDotEnvVariable("BOT_TOKEN"))
 	if err != nil {
@@ -85,4 +73,5 @@ func StartBot() {
 		//gpMsg := tgbotapi.NewKeyboardButtonContact("Welcome Jack, are you gonna book meeting room?")
 		bot.Send(gpMsg)
 	}
+
 }
