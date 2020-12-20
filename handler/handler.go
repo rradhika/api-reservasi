@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-	"github.com/rradhika/api-reservasi/model"
+	"github.com/rradhika/api-reservasi/models"
 	"gorm.io/gorm"
 )
 
@@ -17,7 +17,7 @@ func Welcome() echo.HandlerFunc {
 
 func GetEmployees(db *gorm.DB) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		var em []*model.Employee
+		var em = []models.Employee{}
 
 		if err := db.Find(&em).Error; err != nil {
 			// error handling here
