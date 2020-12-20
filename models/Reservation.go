@@ -32,6 +32,7 @@ func (p *Reservation) CheckChatID(ChatID int64) (ada bool) {
 
 // GetTemp
 func (p *Reservation) GetTemp(ChatID int64) (emps Reservation) {
+
 	Db.
 		Raw("SELECT chat_id,room_id,date_start,date_end FROM reservation_temp WHERE chat_id = ?", ChatID).
 		Scan(&emps)
@@ -94,4 +95,13 @@ func (p *Reservation) UpdateEndDate(data *Reservation) (*Reservation, error) {
 		return nil, err
 	}
 	return data, err
+}
+
+//DeleteTemp Temporary data
+func (p *Reservation) DeleteTemp(ChatID int64) (emps Reservation) {
+	Db.
+		Raw("DELETE FROM reservation_temp WHERE chat_id = ?", ChatID).
+		Scan(&emps)
+
+	return
 }

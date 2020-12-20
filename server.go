@@ -378,20 +378,20 @@ func StartBot() {
 				}
 
 				tempData = revMod.GetTemp(update.CallbackQuery.Message.Chat.ID)
-				emp := model.GetEmployee(update.Message.From.UserName)
+				emp := model.GetEmployee(update.CallbackQuery.From.UserName)
 				toBeInserted := models.ReservationData{
-					EmployeeID: emp.ID,
+					EmployeeID: emp.Esid,
 					RoomID:     tempData.RoomID,
-					DateStart:  tempData.DateStart,
-					DateEnd:    tempData.DateEnd,
+					StartDate:  tempData.DateStart,
+					EndDate:    tempData.DateEnd,
 				}
 
 				_, err = revData.CreateData(&toBeInserted)
+				revMod.DeleteTemp(update.CallbackQuery.Message.Chat.ID)
 
 				if err != nil {
 					log.Fatal(err)
 				}
-				loader = "Ruangan Disimpan"
 
 				list = fmt.Sprintln("Jadwal pemakaian ruangan meeting/fun room sudah berhasil diset. Terima kasih")
 
@@ -403,11 +403,17 @@ func StartBot() {
 				bot.Send(msg)
 				continue
 			case strings.Contains(data, "cancel_reservation"):
-				loader = "Reservation has been cancelled"
-				// } else {
-				// 	fmt.Println(tc.ProcessCalendarSelection(&update))
-				// 	msg = tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, list)
-				// 	msg.ParseMode = "HTML"
+				emp := model.GetEmployee(update.CallbackQuery.From.UserName)
+				revData.DeleteData(emp.Esid)
+				revMod.DeleteTemp(update.CallbackQuery.Message.Chat.ID)
+
+				list = fmt.Sprintln("Reservation has been cancelled")
+
+				msg = tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, list)
+				msg.ParseMode = "HTML"
+				bot.Send(msg)
+				continue
+
 			}
 
 		}

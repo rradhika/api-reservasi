@@ -7,7 +7,7 @@ import (
 )
 
 type Employee struct {
-	ID        int64  `db:"esid"`
+	Esid      int64  `db:"esid"`
 	Name      string `db:"name"`
 	Telegram  string `db:"telegram"`
 	StartDate string `db:"start_date"`
@@ -21,9 +21,8 @@ func (Employee) TableName() string {
 
 // GetEmployee
 func (p *Employee) GetEmployee(telegram string) (emps Employee) {
-
 	Db.
-		Raw("SELECT esid, name, telegram FROM employee WHERE telegram = ?", telegram).
+		Raw("SELECT * FROM employee WHERE telegram = ?", "@"+telegram).
 		Scan(&emps)
 
 	return
