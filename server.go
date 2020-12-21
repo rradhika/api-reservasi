@@ -19,12 +19,6 @@ import (
 	"github.com/rradhika/api-reservasi/models"
 )
 
-const (
-	layoutISO     = "2006-01-02T15:04:05+07:00"
-	layoutTime    = "15:04"
-	layoutTanggal = "2 January 2006"
-)
-
 //M is exported
 type M map[string]interface{}
 
@@ -65,6 +59,15 @@ func main() {
 func StartBot() {
 	// db, err := datastore.NewDB()
 	bot, err := tgbotapi.NewBotAPI(goDotEnvVariable("BOT_TOKEN"))
+
+	//Declare tanggal sekarang
+	yNow, mNow, dNow := time.Now().Date()
+
+	nowRaw := time.Now()
+	timeStampString := nowRaw.Format(LayoutFullSQL)
+	timeStamp, err := time.Parse(LayoutFullSQL, timeStampString)
+	hr, min, sec := timeStamp.Clock()
+
 	model := models.Employee{}
 	roomsMod := models.Room{}
 	revMod := models.Reservation{}
@@ -106,14 +109,7 @@ func StartBot() {
 
 			loader = "Please wait.."
 
-			now := time.Now().Format(layoutTanggal)
-
-			bot.AnswerCallbackQuery(
-				tgbotapi.CallbackConfig{
-					CallbackQueryID: update.CallbackQuery.ID,
-					Text:            loader,
-				},
-			)
+			now := time.Now().Format(LayoutTanggal)
 
 			//Contains:
 			//check_schedule: to check schedule
@@ -124,6 +120,14 @@ func StartBot() {
 			case strings.Contains(data, "check_schedule"):
 				// msg := fmt.Sprintf("You choose %s", update.CallbackQuery.Message.Chat.ID)
 				// rspn = "Check Penggunaan Ruangan"
+
+				bot.AnswerCallbackQuery(
+					tgbotapi.CallbackConfig{
+						CallbackQueryID: update.CallbackQuery.ID,
+						Text:            loader,
+					},
+				)
+
 				checkSchedule := model.CheckToday()
 				if !checkSchedule {
 					list += "Pemakaian ruang meeting dan fun room " + now + " masih kosong"
@@ -136,9 +140,12 @@ func StartBot() {
 						empl = model.CheckPenggunaRuangan(rm.ID)
 
 						for _, emp := range empl {
-							sd, _ := time.Parse(layoutISO, emp.StartDate)
-							ed, _ := time.Parse(layoutISO, emp.EndDate)
-							list += emp.Telegram + " :  " + sd.Format(layoutTime) + " - " + ed.Format(layoutTime) + "\n"
+							sd, _ := time.Parse(LayoutISO, emp.StartDate)
+							ed, _ := time.Parse(LayoutISO, emp.EndDate)
+							if validDate(ed, sd) {
+								ed, _ = time.Parse(LayoutTime, tp.JamTerakhir+":"+tp.MenitTerakhir)
+							}
+							list += emp.Telegram + " :  " + sd.Format(LayoutTime) + " - " + ed.Format(LayoutTime) + "\n"
 						}
 						list += "\n"
 
@@ -153,7 +160,12 @@ func StartBot() {
 				continue
 			case strings.Contains(data, "reserve_place"):
 				// rspn = "Reservasi Ruangan"
-
+				bot.AnswerCallbackQuery(
+					tgbotapi.CallbackConfig{
+						CallbackQueryID: update.CallbackQuery.ID,
+						Text:            loader,
+					},
+				)
 				room = roomsMod.MeetingRoom("yogyakarta")
 
 				btns := []tgbotapi.InlineKeyboardButton{}
@@ -170,6 +182,12 @@ func StartBot() {
 				bot.Send(msg)
 				continue
 			case strings.Contains(data, "pilih_ruangan"):
+				bot.AnswerCallbackQuery(
+					tgbotapi.CallbackConfig{
+						CallbackQueryID: update.CallbackQuery.ID,
+						Text:            loader,
+					},
+				)
 				cData := tp.SeparateCallbackData(data)
 				i, _ := strconv.ParseInt(cData[1], 10, 64)
 				checkChatID := revMod.CheckChatID(update.CallbackQuery.Message.Chat.ID)
@@ -226,6 +244,42 @@ func StartBot() {
 				month := resData[3]
 				day := resData[4]
 
+				//VALIDASI - Tanggal minimal hari ini
+				ns, _ := time.Parse(LayoutFullSQL, strconv.Itoa(yNow)+"-"+strconv.Itoa(int(mNow))+"-"+strconv.Itoa(dNow)+" "+tp.JamTerakhir+":"+tp.MenitTerakhir+":00")
+				srt, _ := time.Parse(LayoutFullSQL, year+"-"+month+"-"+day+" "+strconv.Itoa(int(hr))+":"+strconv.Itoa(int(min))+":"+strconv.Itoa(int(sec)))
+				ns, _ = time.Parse(LayoutSQL, strconv.Itoa(yNow)+"-"+strconv.Itoa(int(mNow))+"-"+strconv.Itoa(dNow))
+				srt, _ = time.Parse(LayoutSQL, year+"-"+month+"-"+day)
+
+				if !validDate(srt, ns) {
+					loader = "Mohon Pilih Tanggal minimal hari ini"
+					bot.AnswerCallbackQuery(
+						tgbotapi.CallbackConfig{
+							CallbackQueryID: update.CallbackQuery.ID,
+							Text:            loader,
+						},
+					)
+					continue
+				}
+				if sameDate(srt, ns) {
+					ns, _ = time.Parse(LayoutTime, tp.JamTerakhir+":"+tp.MenitTerakhir)
+					srt, _ = time.Parse(LayoutTime, strconv.Itoa(int(hr))+":"+strconv.Itoa(int(min)))
+					if !validHour(srt, ns) {
+						loader = "Mohon Pilih Tanggal besok ya, hari ini office hour sudah selesai. "
+						bot.AnswerCallbackQuery(
+							tgbotapi.CallbackConfig{
+								CallbackQueryID: update.CallbackQuery.ID,
+								Text:            loader,
+							},
+						)
+						continue
+					}
+
+					fmt.Printf("sameDate: Jam Max: %s", ns)
+					fmt.Printf("sameDate: Jam Dipilih: %s", srt)
+				}
+
+				//END VALIDASI
+
 				switch action {
 
 				case "DAY":
@@ -279,10 +333,28 @@ func StartBot() {
 				// now := time.Now()
 				resData := tp.SeparateCallbackData(data)
 				tempData := revMod.GetTemp(update.CallbackQuery.Message.Chat.ID)
-				sd, _ := time.Parse(layoutISO, tempData.DateStart)
+				sd, _ := time.Parse(LayoutISO, tempData.DateStart)
 				startDate := sd.Format(LayoutSQL) + " " + resData[1] + ":" + resData[2] + ":00"
-				toBeQuery := models.Reservation{ChatID: update.CallbackQuery.Message.Chat.ID, DateStart: startDate}
 
+				//VALIDASI - Jam minimal adalah jam hari ini
+				// ns := sd
+				// srt, _ := time.Parse(LayoutISO, nowRaw.Format(LayoutFullSQL))
+
+				// fmt.Printf("CheckJamMulai: Jam Max: %s", ns)
+				// fmt.Printf("CheckJamMulai: Jam Dipilih: %s", srt)
+
+				// if !validDate(srt, ns) {
+				// 	loader = fmt.Sprintf("Mohon Pilih Jam minimal : %s", ns.Format(LayoutTime))
+				// 	bot.AnswerCallbackQuery(
+				// 		tgbotapi.CallbackConfig{
+				// 			CallbackQueryID: update.CallbackQuery.ID,
+				// 			Text:            loader,
+				// 		},
+				// 	)
+				// 	continue
+				// }
+
+				toBeQuery := models.Reservation{ChatID: update.CallbackQuery.Message.Chat.ID, DateStart: startDate}
 				// UpdateStartDate
 				_, err := revMod.UpdateStartDate(&toBeQuery)
 
@@ -312,6 +384,28 @@ func StartBot() {
 				year := resData[2]
 				month := resData[3]
 				day := resData[4]
+
+				//VALIDASI - Tanggal minimal sama dengan tanggal mulai
+				tempData := revMod.GetTemp(update.CallbackQuery.Message.Chat.ID)
+				dateTempMulai := strings.Split(tempData.DateStart, "T")
+				ns, _ := time.Parse(LayoutSQL, dateTempMulai[0])
+				srt, _ := time.Parse(LayoutSQL, year+"-"+month+"-"+day)
+
+				if !validDate(srt, ns) {
+					loader = fmt.Sprintf("Mohon Pilih Tanggal minimal Tanggal Mulai: %s", ns.Format(LayoutTanggal))
+					bot.AnswerCallbackQuery(
+						tgbotapi.CallbackConfig{
+							CallbackQueryID: update.CallbackQuery.ID,
+							Text:            loader,
+						},
+					)
+					continue
+				}
+				// fmt.Printf("Tanggal Mulai Asli: %s", tempData.DateStart)
+				// fmt.Printf("Tanggal Mulai Tanggal: %s", dateTempMulai[0])
+				// fmt.Printf("Tanggal Mulai: %s", ns)
+				// fmt.Printf("Tanggal Dipilih: %s", srt)
+				//END VALIDASI
 
 				switch action {
 
@@ -366,7 +460,7 @@ func StartBot() {
 				// now := time.Now()
 				resData := tp.SeparateCallbackData(data)
 				tempData := revMod.GetTemp(update.CallbackQuery.Message.Chat.ID)
-				de, _ := time.Parse(layoutISO, tempData.DateEnd)
+				de, _ := time.Parse(LayoutISO, tempData.DateEnd)
 				endDate := de.Format(LayoutSQL) + " " + resData[1] + ":" + resData[2] + ":00"
 				toBeQuery := models.Reservation{ChatID: update.CallbackQuery.Message.Chat.ID, DateEnd: endDate}
 
@@ -422,6 +516,17 @@ func StartBot() {
 
 		//Start Command
 		if strings.Contains(msgText, "/start") {
+
+			validateEmp := model.CheckEmployee(update.Message.From.UserName)
+
+			if !validateEmp {
+				fnm, lnm, usn := update.Message.From.FirstName, update.Message.From.LastName, update.Message.From.UserName
+				msg := fmt.Sprintf("Halo %s %s, username Anda: @%s belum terdaftar di sistem karyawan SPE. Silahkan hubungi tim HC untuk mendaftarkan. Terima kasih", fnm, lnm, usn)
+				reply := tgbotapi.NewMessage(update.Message.Chat.ID, msg)
+				bot.Send(reply)
+				continue
+			}
+
 			fnm, lnm := update.Message.From.FirstName, update.Message.From.LastName
 			msg := fmt.Sprintf("Welcome %s %s, how are you doing? Please choose this option below.", fnm, lnm)
 
@@ -453,4 +558,39 @@ func StartBot() {
 
 	}
 
+}
+
+//validDate untuk mengecek tanggalnya sekarang atau masa depan
+func validDate(start, check time.Time) bool {
+	start = start.UTC()
+	check = check.UTC()
+	// if check.Equal(start) {
+	// 	ns, _ := time.Parse(LayoutTime, start.Format(LayoutTime))
+	// 	srt, _ := time.Parse(LayoutTime, check.Format(LayoutTime))
+	// 	validDate(ns, srt)
+	// }
+	return check.Before(start) || check.Equal(start)
+}
+
+func sameDate(start, check time.Time) bool {
+	start = start.UTC()
+	check = check.UTC()
+	// if check.Equal(start) {
+	// 	ns, _ := time.Parse(LayoutTime, start.Format(LayoutTime))
+	// 	srt, _ := time.Parse(LayoutTime, check.Format(LayoutTime))
+	// 	validDate(ns, srt)
+	// }
+	return check.Equal(start)
+}
+
+//validDate untuk mengecek tanggalnya sekarang atau masa depan
+func validHour(start, check time.Time) bool {
+	start = start.UTC()
+	check = check.UTC()
+	// if check.Equal(start) {
+	// 	ns, _ := time.Parse(LayoutTime, start.Format(LayoutTime))
+	// 	srt, _ := time.Parse(LayoutTime, check.Format(LayoutTime))
+	// 	validDate(ns, srt)
+	// }
+	return check.After(start)
 }
