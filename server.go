@@ -142,9 +142,18 @@ func StartBot() {
 						for _, emp := range empl {
 							sd, _ := time.Parse(LayoutISO, emp.StartDate)
 							ed, _ := time.Parse(LayoutISO, emp.EndDate)
-							if validDate(ed, sd) {
-								ed, _ = time.Parse(LayoutTime, tp.JamTerakhir+":"+tp.MenitTerakhir)
+
+							sdSq, _ := time.Parse(LayoutSQL, sd.Format(LayoutSQL))
+							edSq, _ := time.Parse(LayoutSQL, ed.Format(LayoutSQL))
+							if !sameDate(edSq, sdSq) {
+								sdNow, _ := time.Parse(LayoutSQL, nowRaw.Format(LayoutSQL))
+								if !sameDate(edSq, sdNow) {
+									ed, _ = time.Parse(LayoutTime, tp.JamTerakhir+":"+tp.MenitTerakhir)
+								}
 							}
+							fmt.Printf("Tanggal sd: %s", sdSq)
+							fmt.Printf("Tanggal ed: %s", edSq)
+
 							list += emp.Telegram + " :  " + sd.Format(LayoutTime) + " - " + ed.Format(LayoutTime) + "\n"
 						}
 						list += "\n"
@@ -261,9 +270,13 @@ func StartBot() {
 					continue
 				}
 				if sameDate(srt, ns) {
-					ns, _ = time.Parse(LayoutTime, tp.JamTerakhir+":"+tp.MenitTerakhir)
-					srt, _ = time.Parse(LayoutTime, strconv.Itoa(int(hr))+":"+strconv.Itoa(int(min)))
-					if !validHour(srt, ns) {
+					ns, _ = time.Parse(LayoutTime, strconv.Itoa(int(hr))+":"+strconv.Itoa(int(min)))
+					srt, _ = time.Parse(LayoutTime, tp.JamTerakhir+":"+tp.MenitTerakhir)
+					fmt.Printf("sameDate: Jam Max: %s", ns)
+					fmt.Printf("sameDate: Jam Dipilih: %s", srt)
+
+					//JIKA JAM SEKARANG(NS) LEBIH DARI JAM KANTOR (SRT)
+					if !validHour(ns, srt) {
 						loader = "Mohon Pilih Tanggal besok ya, hari ini office hour sudah selesai. "
 						bot.AnswerCallbackQuery(
 							tgbotapi.CallbackConfig{
@@ -274,8 +287,6 @@ func StartBot() {
 						continue
 					}
 
-					fmt.Printf("sameDate: Jam Max: %s", ns)
-					fmt.Printf("sameDate: Jam Dipilih: %s", srt)
 				}
 
 				//END VALIDASI
@@ -337,22 +348,29 @@ func StartBot() {
 				startDate := sd.Format(LayoutSQL) + " " + resData[1] + ":" + resData[2] + ":00"
 
 				//VALIDASI - Jam minimal adalah jam hari ini
-				// ns := sd
-				// srt, _ := time.Parse(LayoutISO, nowRaw.Format(LayoutFullSQL))
+				nsNow, _ := time.Parse(LayoutSQL, sd.Format(LayoutSQL))
+				srtNow, _ := time.Parse(LayoutSQL, nowRaw.Format(LayoutSQL))
+				if sameDate(srtNow, nsNow) {
+					ns, _ := time.Parse(LayoutTime, nowRaw.Format(LayoutTime))
+					srt, _ := time.Parse(LayoutTime, resData[1]+":"+resData[2])
 
-				// fmt.Printf("CheckJamMulai: Jam Max: %s", ns)
-				// fmt.Printf("CheckJamMulai: Jam Dipilih: %s", srt)
+					fmt.Printf("CheckJamMulai: Jam Minimum: %s", ns)
+					fmt.Printf("CheckJamMulai: Jam Dipilih: %s", srt)
 
-				// if !validDate(srt, ns) {
-				// 	loader = fmt.Sprintf("Mohon Pilih Jam minimal : %s", ns.Format(LayoutTime))
-				// 	bot.AnswerCallbackQuery(
-				// 		tgbotapi.CallbackConfig{
-				// 			CallbackQueryID: update.CallbackQuery.ID,
-				// 			Text:            loader,
-				// 		},
-				// 	)
-				// 	continue
-				// }
+					//JIKA JAM DIPILIH(NS) LEBIH KECIL JAM SEKARANG (SRT)
+					start := ns.UTC()
+					check := srt.UTC()
+					if check.Before(start) {
+						loader = fmt.Sprintf("Mohon Pilih Jam minimal : %s", ns.Format(LayoutTime))
+						bot.AnswerCallbackQuery(
+							tgbotapi.CallbackConfig{
+								CallbackQueryID: update.CallbackQuery.ID,
+								Text:            loader,
+							},
+						)
+						continue
+					}
+				}
 
 				toBeQuery := models.Reservation{ChatID: update.CallbackQuery.Message.Chat.ID, DateStart: startDate}
 				// UpdateStartDate
@@ -460,9 +478,35 @@ func StartBot() {
 				// now := time.Now()
 				resData := tp.SeparateCallbackData(data)
 				tempData := revMod.GetTemp(update.CallbackQuery.Message.Chat.ID)
+				sd, _ := time.Parse(LayoutISO, tempData.DateStart)
 				de, _ := time.Parse(LayoutISO, tempData.DateEnd)
 				endDate := de.Format(LayoutSQL) + " " + resData[1] + ":" + resData[2] + ":00"
 				toBeQuery := models.Reservation{ChatID: update.CallbackQuery.Message.Chat.ID, DateEnd: endDate}
+
+				//VALIDASI
+				nsNow, _ := time.Parse(LayoutSQL, de.Format(LayoutSQL))
+				srtNow, _ := time.Parse(LayoutSQL, nowRaw.Format(LayoutSQL))
+				if sameDate(srtNow, nsNow) {
+					ns, _ := time.Parse(LayoutTime, sd.Format(LayoutTime))
+					srt, _ := time.Parse(LayoutTime, resData[1]+":"+resData[2])
+
+					fmt.Printf("CheckJamMulai: Jam Minimum: %s", ns)
+					fmt.Printf("CheckJamMulai: Jam Dipilih: %s", srt)
+
+					//JIKA JAM DIPILIH(NS) LEBIH KECIL JAM SEKARANG (SRT)
+					start := ns.UTC()
+					check := srt.UTC()
+					if check.Before(start) {
+						loader = fmt.Sprintf("Mohon Pilih Jam minimal : %s", ns.Format(LayoutTime))
+						bot.AnswerCallbackQuery(
+							tgbotapi.CallbackConfig{
+								CallbackQueryID: update.CallbackQuery.ID,
+								Text:            loader,
+							},
+						)
+						continue
+					}
+				}
 
 				// UpdateStartDate
 				_, err := revMod.UpdateEndDate(&toBeQuery)
