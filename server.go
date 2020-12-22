@@ -268,6 +268,13 @@ func StartBot() {
 				// msg = tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, list)
 				// msg.ReplyMarkup = &keyboard
 			case strings.Contains(data, "CALENDAR-MULAI"):
+				loader = "Processing..."
+				bot.AnswerCallbackQuery(
+					tgbotapi.CallbackConfig{
+						CallbackQueryID: update.CallbackQuery.ID,
+						Text:            loader,
+					},
+				)
 				//fmt.Sprintln(strings.Contains(data, "NEXT-MONTH"))
 				resData := tp.SeparateCallbackData(data)
 				action := resData[1]
@@ -344,11 +351,18 @@ func StartBot() {
 					continue
 				}
 				continue
-			case strings.Contains(data, "UPDATE-CALENDAR"):
-				resData := tp.SeparateCallbackData(data)
-				fmt.Println(tc.ProcessCalendarSelection(resData[2], &update))
-				continue
+			// case strings.Contains(data, "UPDATE-CALENDAR"):
+			// 	resData := tp.SeparateCallbackData(data)
+			// 	fmt.Println(tc.ProcessCalendarSelection(resData[2], &update))
+			// 	continue
 			case strings.Contains(data, "UPDATE-JAM-MULAI"):
+				loader = "Processing..."
+				bot.AnswerCallbackQuery(
+					tgbotapi.CallbackConfig{
+						CallbackQueryID: update.CallbackQuery.ID,
+						Text:            loader,
+					},
+				)
 				list = fmt.Sprintln("Pilih Jam Mulai")
 				setMsg := "Set Jam Mulai"
 				resData := tp.SeparateCallbackData(data)
@@ -367,6 +381,13 @@ func StartBot() {
 				bot.Send(msg)
 				continue
 			case strings.Contains(data, "SET-JAM-MULAI"):
+				loader = "Processing..."
+				bot.AnswerCallbackQuery(
+					tgbotapi.CallbackConfig{
+						CallbackQueryID: update.CallbackQuery.ID,
+						Text:            loader,
+					},
+				)
 				// now := time.Now()
 				resData := tp.SeparateCallbackData(data)
 				tempData := revMod.GetTemp(update.CallbackQuery.Message.Chat.ID)
@@ -422,6 +443,13 @@ func StartBot() {
 				bot.Send(msg)
 				continue
 			case strings.Contains(data, "CALENDAR-AKHIR"):
+				loader = "Processing..."
+				bot.AnswerCallbackQuery(
+					tgbotapi.CallbackConfig{
+						CallbackQueryID: update.CallbackQuery.ID,
+						Text:            loader,
+					},
+				)
 				//fmt.Sprintln(strings.Contains(data, "NEXT-MONTH"))
 				resData := tp.SeparateCallbackData(data)
 				action := resData[1]
@@ -483,6 +511,13 @@ func StartBot() {
 				}
 				continue
 			case strings.Contains(data, "UPDATE-JAM-AKHIR"):
+				loader = "Processing..."
+				bot.AnswerCallbackQuery(
+					tgbotapi.CallbackConfig{
+						CallbackQueryID: update.CallbackQuery.ID,
+						Text:            loader,
+					},
+				)
 				list = fmt.Sprintln("Pilih Jam Berakhir")
 				setMsg := "Set Jam Berakhir"
 				resData := tp.SeparateCallbackData(data)
@@ -501,6 +536,13 @@ func StartBot() {
 				bot.Send(msg)
 				continue
 			case strings.Contains(data, "SET-JAM-AKHIR"):
+				loader = "Processing..."
+				bot.AnswerCallbackQuery(
+					tgbotapi.CallbackConfig{
+						CallbackQueryID: update.CallbackQuery.ID,
+						Text:            loader,
+					},
+				)
 				// now := time.Now()
 				resData := tp.SeparateCallbackData(data)
 				tempData := revMod.GetTemp(update.CallbackQuery.Message.Chat.ID)
@@ -569,6 +611,13 @@ func StartBot() {
 				bot.Send(msg)
 				continue
 			case strings.Contains(data, "cancel_reservation"):
+				loader = "Processing..."
+				bot.AnswerCallbackQuery(
+					tgbotapi.CallbackConfig{
+						CallbackQueryID: update.CallbackQuery.ID,
+						Text:            loader,
+					},
+				)
 				emp := model.GetEmployee(update.CallbackQuery.From.UserName)
 				revData.DeleteData(emp.Esid)
 				revMod.DeleteTemp(update.CallbackQuery.Message.Chat.ID)
