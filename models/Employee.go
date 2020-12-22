@@ -7,16 +7,23 @@ import (
 )
 
 type Employee struct {
-	Esid      int64  `db:"esid"`
-	Name      string `db:"name"`
-	Telegram  string `db:"telegram"`
-	StartDate string `db:"start_date"`
-	EndDate   string `db:"end_date"`
-	RoomName  string `db:"room_name"`
+	Esid           int64  `db:"esid"`
+	Name           string `db:"name"`
+	Telegram       string `db:"telegram"`
+	TelegramChatID string `db:"telegram_chat_id"`
+	StartDate      string `db:"start_date"`
+	EndDate        string `db:"end_date"`
+	RoomName       string `db:"room_name"`
 }
 
 func (Employee) TableName() string {
 	return "employee"
+}
+
+// GetEmployees
+func (p *Employee) GetEmployees() (emps []Employee) {
+	Db.Where("deleted_at is null").Find(&emps)
+	return
 }
 
 // GetEmployee

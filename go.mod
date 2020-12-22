@@ -14,6 +14,7 @@ require (
 	github.com/joho/godotenv v1.3.0
 	github.com/labstack/echo/v4 v4.1.17
 	github.com/mattn/go-shellwords v1.0.10 // indirect
+	github.com/robfig/cron/v3 v3.0.0
 	github.com/sirupsen/logrus v1.7.0 // indirect
 	github.com/technoweenie/multipartstreamer v1.0.1 // indirect
 	gopkg.in/urfave/cli.v1 v1.20.0 // indirect

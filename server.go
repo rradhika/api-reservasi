@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/robfig/cron/v3"
 	. "github.com/rradhika/api-reservasi/telegram_calendar"
 	tp "github.com/rradhika/api-reservasi/timepicker"
 
@@ -18,6 +19,9 @@ import (
 	"github.com/rradhika/api-reservasi/handler"
 	"github.com/rradhika/api-reservasi/models"
 )
+
+var bot *tgbotapi.BotAPI
+var updChannel tgbotapi.UpdatesChannel
 
 //M is exported
 type M map[string]interface{}
@@ -38,10 +42,20 @@ func main() {
 
 	NewDB()
 	db := Db
-	// model := models.Employee{}
 
-	// empl := model.CheckPenggunaRuangan()
-	// fmt.Println(empl)
+	AuthBot()
+
+	//Start initiate Cron every 9 AM
+	c := cron.New()
+	c.AddFunc("0 9 * * ?", RunPenggunaRuanganByGroup)
+
+	//For notif every employees
+	// c.AddFunc("@every 0h0m10s", RunPenggunaRuanganEmployee)
+
+	//For notif in group
+	// c.AddFunc("@every 0h0m10s", RunPenggunaRuanganByGroup)
+	c.Start()
+	///End Cron
 
 	go StartBot()
 
@@ -56,16 +70,37 @@ func main() {
 	//You can also use https://golang.org/pkg/sync/#WaitGroup instead.
 }
 
+//AuthBot authenticate the BOT
+func AuthBot() {
+
+	var err error
+	bot, err = tgbotapi.NewBotAPI(goDotEnvVariable("BOT_TOKEN"))
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	bot.Debug = true
+	log.Printf("Authorized on account %s", bot.Self.UserName)
+
+	updateConfig := tgbotapi.NewUpdate(0)
+	updateConfig.Timeout = 60
+
+	updChannel, err = bot.GetUpdatesChan(updateConfig)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+}
+
+//StartBot where the command and text processed
 func StartBot() {
-	// db, err := datastore.NewDB()
-	bot, err := tgbotapi.NewBotAPI(goDotEnvVariable("BOT_TOKEN"))
 
 	//Declare tanggal sekarang
 	yNow, mNow, dNow := time.Now().Date()
 
 	nowRaw := time.Now()
 	timeStampString := nowRaw.Format(LayoutFullSQL)
-	timeStamp, err := time.Parse(LayoutFullSQL, timeStampString)
+	timeStamp, _ := time.Parse(LayoutFullSQL, timeStampString)
 	hr, min, sec := timeStamp.Clock()
 
 	model := models.Employee{}
@@ -73,22 +108,9 @@ func StartBot() {
 	revMod := models.Reservation{}
 	revData := models.ReservationData{}
 
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	bot.Debug = true
-
-	log.Printf("Authorized on account %s", bot.Self.UserName)
-
-	u := tgbotapi.NewUpdate(0)
-	u.Timeout = 60
-
-	updates, err := bot.GetUpdatesChan(u)
-
 	tc := TelegramCalendar{}
 
-	for update := range updates {
+	for update := range updChannel {
 
 		if update.Message == nil && update.CallbackQuery == nil {
 			continue
@@ -322,6 +344,10 @@ func StartBot() {
 					continue
 				}
 				continue
+			case strings.Contains(data, "UPDATE-CALENDAR"):
+				resData := tp.SeparateCallbackData(data)
+				fmt.Println(tc.ProcessCalendarSelection(resData[2], &update))
+				continue
 			case strings.Contains(data, "UPDATE-JAM-MULAI"):
 				list = fmt.Sprintln("Pilih Jam Mulai")
 				setMsg := "Set Jam Mulai"
@@ -530,6 +556,8 @@ func StartBot() {
 				if err != nil {
 					log.Fatal(err)
 				}
+				//VALIDASI PENGGUNAAN RUANGAN
+				// validateRuangan := model.CheckRuanganWaktuEmployee(update.Message.From.UserName)
 
 				list = fmt.Sprintln("Jadwal pemakaian ruangan meeting/fun room sudah berhasil diset. Terima kasih")
 
@@ -637,4 +665,107 @@ func validHour(start, check time.Time) bool {
 	// 	validDate(ns, srt)
 	// }
 	return check.After(start)
+}
+
+//RunPenggunaRuanganByGroup untuk mengirimkan notifikasi pengguna ruangan
+func RunPenggunaRuanganByGroup() {
+	model := models.Employee{}
+	roomsMod := models.Room{}
+
+	checkSchedule := model.CheckToday()
+	now := time.Now().Format(LayoutTanggal)
+	nowRaw := time.Now()
+
+	var list string
+	if !checkSchedule {
+		list += "Pemakaian ruang meeting dan fun room " + now + " masih kosong"
+	} else {
+		room := roomsMod.MeetingRoom("yogyakarta")
+		list += "<b>Pemakaian ruang meeting dan fun room " + now + ":</b> \n\n"
+		for _, rm := range room {
+			list += "<b>" + rm.Name + "</b> :  \n"
+			// fmt.Println("INI LHO: " + strconv.Itoa(int(rm.ID)))
+			empl := model.CheckPenggunaRuangan(rm.ID)
+
+			for _, emp := range empl {
+				sd, _ := time.Parse(LayoutISO, emp.StartDate)
+				ed, _ := time.Parse(LayoutISO, emp.EndDate)
+
+				sdSq, _ := time.Parse(LayoutSQL, sd.Format(LayoutSQL))
+				edSq, _ := time.Parse(LayoutSQL, ed.Format(LayoutSQL))
+				if !sameDate(edSq, sdSq) {
+					sdNow, _ := time.Parse(LayoutSQL, nowRaw.Format(LayoutSQL))
+					if !sameDate(edSq, sdNow) {
+						ed, _ = time.Parse(LayoutTime, tp.JamTerakhir+":"+tp.MenitTerakhir)
+					}
+				}
+				fmt.Printf("Tanggal sd: %s", sdSq)
+				fmt.Printf("Tanggal ed: %s", edSq)
+
+				list += emp.Telegram + " :  " + sd.Format(LayoutTime) + " - " + ed.Format(LayoutTime) + "\n"
+			}
+			list += "\n"
+
+		}
+		list += "Bagi SPEcial team yang akan ijin menggunakan ruang meeting dan fun room, silahkan di infokan dgn tim HC-GA ya. \n\n"
+		list += "Thank you"
+
+	}
+	chatID, _ := strconv.ParseInt(goDotEnvVariable("BOT_CHATID"), 10, 64)
+	msg := tgbotapi.NewMessage(chatID, list)
+	msg.ParseMode = "HTML"
+	bot.Send(msg)
+}
+
+//RunPenggunaRuanganEmployee untuk mengirimkan notifikasi pengguna ruangan ke semua user
+func RunPenggunaRuanganEmployee() {
+	model := models.Employee{}
+	roomsMod := models.Room{}
+
+	checkSchedule := model.CheckToday()
+	now := time.Now().Format(LayoutTanggal)
+	nowRaw := time.Now()
+	employees := model.GetEmployees()
+
+	for _, employee := range employees {
+		var list string
+		if !checkSchedule {
+			list += "Pemakaian ruang meeting dan fun room " + now + " masih kosong"
+		} else {
+			room := roomsMod.MeetingRoom("yogyakarta")
+			list += "<b>Pemakaian ruang meeting dan fun room " + now + ":</b> \n\n"
+			for _, rm := range room {
+				list += "<b>" + rm.Name + "</b> :  \n"
+				// fmt.Println("INI LHO: " + strconv.Itoa(int(rm.ID)))
+				empl := model.CheckPenggunaRuangan(rm.ID)
+
+				for _, emp := range empl {
+					sd, _ := time.Parse(LayoutISO, emp.StartDate)
+					ed, _ := time.Parse(LayoutISO, emp.EndDate)
+
+					sdSq, _ := time.Parse(LayoutSQL, sd.Format(LayoutSQL))
+					edSq, _ := time.Parse(LayoutSQL, ed.Format(LayoutSQL))
+					if !sameDate(edSq, sdSq) {
+						sdNow, _ := time.Parse(LayoutSQL, nowRaw.Format(LayoutSQL))
+						if !sameDate(edSq, sdNow) {
+							ed, _ = time.Parse(LayoutTime, tp.JamTerakhir+":"+tp.MenitTerakhir)
+						}
+					}
+					fmt.Printf("Tanggal sd: %s", sdSq)
+					fmt.Printf("Tanggal ed: %s", edSq)
+
+					list += emp.Telegram + " :  " + sd.Format(LayoutTime) + " - " + ed.Format(LayoutTime) + "\n"
+				}
+				list += "\n"
+
+			}
+			list += "Bagi SPEcial team yang akan ijin menggunakan ruang meeting dan fun room, silahkan di infokan dgn tim HC-GA ya. \n\n"
+			list += "Thank you"
+
+		}
+		chatID, _ := strconv.ParseInt(employee.TelegramChatID, 10, 64)
+		msg := tgbotapi.NewMessage(chatID, list)
+		msg.ParseMode = "HTML"
+		bot.Send(msg)
+	}
 }
