@@ -609,7 +609,30 @@ func StartBot() {
 					bot.Send(msg)
 					continue
 				}
-				//
+				//End Validate
+
+				//Validate jika ruangan dipesan pada waktu yang sama
+				validateRoom := revData.CheckWaktuRuangan(&toBeSearch)
+				if !validateRoom {
+					loader = "Ruangan tidak tersedia di waktu yang dipilih."
+					bot.AnswerCallbackQuery(
+						tgbotapi.CallbackConfig{
+							CallbackQueryID: update.CallbackQuery.ID,
+							Text:            loader,
+						},
+					)
+
+					list = fmt.Sprintln("Ruangan yang Anda pesan tidak tersedia di waktu yang Anda pilih.")
+
+					var msg = tgbotapi.NewEditMessageText(
+						update.CallbackQuery.Message.Chat.ID,
+						update.CallbackQuery.Message.MessageID,
+						list,
+					)
+					bot.Send(msg)
+					continue
+				}
+				//End Validate
 
 				loader = "Processing..."
 				bot.AnswerCallbackQuery(

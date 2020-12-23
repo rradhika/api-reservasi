@@ -18,11 +18,21 @@ func (ReservationData) TableName() string {
 	return "reservation_room"
 }
 
-// CheckWaktuEmployee mem-svalidasi employee tidak boleh memesan 2 tempat berbeda di waktu yang sama
+// CheckWaktuEmployee mem-validasi employee tidak boleh memesan 2 tempat di waktu yang sama
 func (p *ReservationData) CheckWaktuEmployee(data *ReservationData) (ada bool) {
 	var emps []ReservationData
 	Db.
 		Raw("SELECT * FROM reservation_room WHERE (start_date <= ? AND end_date >= ?) AND employee_id = ? ", data.StartDate, data.EndDate, data.EmployeeID).
+		Scan(&emps)
+	ada = len(emps) == 0
+	return
+}
+
+// CheckWaktuRuangan mem-validasi ruangan tidak boleh dipesan diwaktu yg sama
+func (p *ReservationData) CheckWaktuRuangan(data *ReservationData) (ada bool) {
+	var emps []ReservationData
+	Db.
+		Raw("SELECT * FROM reservation_room WHERE (start_date <= ? AND end_date >= ?) AND room_id = ? ", data.StartDate, data.EndDate, data.RoomID).
 		Scan(&emps)
 	ada = len(emps) == 0
 	return
