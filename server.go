@@ -268,13 +268,7 @@ func StartBot() {
 				// msg = tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, list)
 				// msg.ReplyMarkup = &keyboard
 			case strings.Contains(data, "CALENDAR-MULAI"):
-				loader = "Processing..."
-				bot.AnswerCallbackQuery(
-					tgbotapi.CallbackConfig{
-						CallbackQueryID: update.CallbackQuery.ID,
-						Text:            loader,
-					},
-				)
+
 				//fmt.Sprintln(strings.Contains(data, "NEXT-MONTH"))
 				resData := tp.SeparateCallbackData(data)
 				action := resData[1]
@@ -317,6 +311,14 @@ func StartBot() {
 					}
 
 				}
+
+				loader = "Processing..."
+				bot.AnswerCallbackQuery(
+					tgbotapi.CallbackConfig{
+						CallbackQueryID: update.CallbackQuery.ID,
+						Text:            loader,
+					},
+				)
 
 				//END VALIDASI
 
@@ -381,13 +383,7 @@ func StartBot() {
 				bot.Send(msg)
 				continue
 			case strings.Contains(data, "SET-JAM-MULAI"):
-				loader = "Processing..."
-				bot.AnswerCallbackQuery(
-					tgbotapi.CallbackConfig{
-						CallbackQueryID: update.CallbackQuery.ID,
-						Text:            loader,
-					},
-				)
+
 				// now := time.Now()
 				resData := tp.SeparateCallbackData(data)
 				tempData := revMod.GetTemp(update.CallbackQuery.Message.Chat.ID)
@@ -419,6 +415,14 @@ func StartBot() {
 					}
 				}
 
+				loader = "Processing..."
+				bot.AnswerCallbackQuery(
+					tgbotapi.CallbackConfig{
+						CallbackQueryID: update.CallbackQuery.ID,
+						Text:            loader,
+					},
+				)
+
 				toBeQuery := models.Reservation{ChatID: update.CallbackQuery.Message.Chat.ID, DateStart: startDate}
 				// UpdateStartDate
 				_, err := revMod.UpdateStartDate(&toBeQuery)
@@ -443,13 +447,7 @@ func StartBot() {
 				bot.Send(msg)
 				continue
 			case strings.Contains(data, "CALENDAR-AKHIR"):
-				loader = "Processing..."
-				bot.AnswerCallbackQuery(
-					tgbotapi.CallbackConfig{
-						CallbackQueryID: update.CallbackQuery.ID,
-						Text:            loader,
-					},
-				)
+
 				//fmt.Sprintln(strings.Contains(data, "NEXT-MONTH"))
 				resData := tp.SeparateCallbackData(data)
 				action := resData[1]
@@ -478,6 +476,14 @@ func StartBot() {
 				// fmt.Printf("Tanggal Mulai: %s", ns)
 				// fmt.Printf("Tanggal Dipilih: %s", srt)
 				//END VALIDASI
+
+				loader = "Processing..."
+				bot.AnswerCallbackQuery(
+					tgbotapi.CallbackConfig{
+						CallbackQueryID: update.CallbackQuery.ID,
+						Text:            loader,
+					},
+				)
 
 				switch action {
 
@@ -536,13 +542,7 @@ func StartBot() {
 				bot.Send(msg)
 				continue
 			case strings.Contains(data, "SET-JAM-AKHIR"):
-				loader = "Processing..."
-				bot.AnswerCallbackQuery(
-					tgbotapi.CallbackConfig{
-						CallbackQueryID: update.CallbackQuery.ID,
-						Text:            loader,
-					},
-				)
+
 				// now := time.Now()
 				resData := tp.SeparateCallbackData(data)
 				tempData := revMod.GetTemp(update.CallbackQuery.Message.Chat.ID)
@@ -550,6 +550,8 @@ func StartBot() {
 				de, _ := time.Parse(LayoutISO, tempData.DateEnd)
 				endDate := de.Format(LayoutSQL) + " " + resData[1] + ":" + resData[2] + ":00"
 				toBeQuery := models.Reservation{ChatID: update.CallbackQuery.Message.Chat.ID, DateEnd: endDate}
+				// UpdateEndDate temporary
+				_, err := revMod.UpdateEndDate(&toBeQuery)
 
 				//VALIDASI
 				nsNow, _ := time.Parse(LayoutSQL, de.Format(LayoutSQL))
@@ -576,15 +578,51 @@ func StartBot() {
 					}
 				}
 
-				// UpdateStartDate
-				_, err := revMod.UpdateEndDate(&toBeQuery)
+				tempData = revMod.GetTemp(update.CallbackQuery.Message.Chat.ID)
+				emp := model.GetEmployee(update.CallbackQuery.From.UserName)
+
+				//VALIDASI PENGGUNAAN RUANGAN
+				toBeSearch := models.ReservationData{
+					EmployeeID: emp.Esid,
+					RoomID:     tempData.RoomID,
+					StartDate:  tempData.DateStart,
+					EndDate:    tempData.DateEnd,
+				}
+				//Validate jika employee memesan pada waktu yang sama
+				validateEmployee := revData.CheckWaktuEmployee(&toBeSearch)
+				if !validateEmployee {
+					loader = "Anda sudah ada jadwal di waktu yang sama."
+					bot.AnswerCallbackQuery(
+						tgbotapi.CallbackConfig{
+							CallbackQueryID: update.CallbackQuery.ID,
+							Text:            loader,
+						},
+					)
+
+					list = fmt.Sprintln("Anda sudah ada jadwal pemakaian ruangan meeting/fun pada jam yang sama. Silahkan pilih waktu lainnya atau batalkan reservasi yang sudah ada.")
+
+					var msg = tgbotapi.NewEditMessageText(
+						update.CallbackQuery.Message.Chat.ID,
+						update.CallbackQuery.Message.MessageID,
+						list,
+					)
+					bot.Send(msg)
+					continue
+				}
+				//
+
+				loader = "Processing..."
+				bot.AnswerCallbackQuery(
+					tgbotapi.CallbackConfig{
+						CallbackQueryID: update.CallbackQuery.ID,
+						Text:            loader,
+					},
+				)
 
 				if err != nil {
 					log.Fatal(err)
 				}
 
-				tempData = revMod.GetTemp(update.CallbackQuery.Message.Chat.ID)
-				emp := model.GetEmployee(update.CallbackQuery.From.UserName)
 				toBeInserted := models.ReservationData{
 					EmployeeID: emp.Esid,
 					RoomID:     tempData.RoomID,
@@ -598,8 +636,6 @@ func StartBot() {
 				if err != nil {
 					log.Fatal(err)
 				}
-				//VALIDASI PENGGUNAAN RUANGAN
-				// validateRuangan := model.CheckRuanganWaktuEmployee(update.Message.From.UserName)
 
 				list = fmt.Sprintln("Jadwal pemakaian ruangan meeting/fun room sudah berhasil diset. Terima kasih")
 
