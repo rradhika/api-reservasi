@@ -101,7 +101,7 @@ func StartBot() {
 	nowRaw := time.Now()
 	timeStampString := nowRaw.Format(LayoutFullSQL)
 	timeStamp, _ := time.Parse(LayoutFullSQL, timeStampString)
-	hr, min, sec := timeStamp.Clock()
+	hr, min := timeStamp.Format(LayoutHour), timeStamp.Format(LayoutMinute)
 
 	model := models.Employee{}
 	roomsMod := models.Room{}
@@ -278,7 +278,7 @@ func StartBot() {
 
 				//VALIDASI - Tanggal minimal hari ini
 				ns, _ := time.Parse(LayoutFullSQL, strconv.Itoa(yNow)+"-"+strconv.Itoa(int(mNow))+"-"+strconv.Itoa(dNow)+" "+tp.JamTerakhir+":"+tp.MenitTerakhir+":00")
-				srt, _ := time.Parse(LayoutFullSQL, year+"-"+month+"-"+day+" "+strconv.Itoa(int(hr))+":"+strconv.Itoa(int(min))+":"+strconv.Itoa(int(sec)))
+				srt, _ := time.Parse(LayoutFullSQL, year+"-"+month+"-"+day+" "+hr+":"+min+":00")
 				ns, _ = time.Parse(LayoutSQL, strconv.Itoa(yNow)+"-"+strconv.Itoa(int(mNow))+"-"+strconv.Itoa(dNow))
 				srt, _ = time.Parse(LayoutSQL, year+"-"+month+"-"+day)
 
@@ -293,14 +293,14 @@ func StartBot() {
 					continue
 				}
 				if sameDate(srt, ns) {
-					ns, _ = time.Parse(LayoutTime, strconv.Itoa(int(hr))+":"+strconv.Itoa(int(min)))
+					ns, _ = time.Parse(LayoutTime, hr+":"+min)
 					srt, _ = time.Parse(LayoutTime, tp.JamTerakhir+":"+tp.MenitTerakhir)
 					fmt.Printf("sameDate: Jam Max: %s", ns)
 					fmt.Printf("sameDate: Jam Dipilih: %s", srt)
 
 					//JIKA JAM SEKARANG(NS) LEBIH DARI JAM KANTOR (SRT)
 					if !validHour(ns, srt) {
-						loader = "Mohon Pilih Tanggal besok ya, hari ini office hour sudah selesai. "
+						loader = "Mohon pilih tanggal besok ya, hari ini office hour sudah selesai. "
 						bot.AnswerCallbackQuery(
 							tgbotapi.CallbackConfig{
 								CallbackQueryID: update.CallbackQuery.ID,
@@ -556,7 +556,10 @@ func StartBot() {
 				//VALIDASI
 				nsNow, _ := time.Parse(LayoutSQL, de.Format(LayoutSQL))
 				srtNow, _ := time.Parse(LayoutSQL, nowRaw.Format(LayoutSQL))
-				if sameDate(srtNow, nsNow) {
+				sdDate, _ := time.Parse(LayoutSQL, sd.Format(LayoutSQL))
+				deDate, _ := time.Parse(LayoutSQL, de.Format(LayoutSQL))
+
+				if sameDate(srtNow, nsNow) || sameDate(sdDate, deDate) {
 					ns, _ := time.Parse(LayoutTime, sd.Format(LayoutTime))
 					srt, _ := time.Parse(LayoutTime, resData[1]+":"+resData[2])
 
@@ -566,8 +569,8 @@ func StartBot() {
 					//JIKA JAM DIPILIH(NS) LEBIH KECIL JAM SEKARANG (SRT)
 					start := ns.UTC()
 					check := srt.UTC()
-					if check.Before(start) {
-						loader = fmt.Sprintf("Mohon Pilih Jam minimal : %s", ns.Format(LayoutTime))
+					if check.Before(start) || check.Equal(start) {
+						loader = fmt.Sprintf("Mohon pilih Lebih dari jam : %s", ns.Format(LayoutTime))
 						bot.AnswerCallbackQuery(
 							tgbotapi.CallbackConfig{
 								CallbackQueryID: update.CallbackQuery.ID,
@@ -660,13 +663,17 @@ func StartBot() {
 					log.Fatal(err)
 				}
 
-				list = fmt.Sprintln("Jadwal pemakaian ruangan meeting/fun room sudah berhasil diset. Terima kasih")
+				startD, _ := time.Parse(LayoutISO, toBeInserted.StartDate)
+				endD, _ := time.Parse(LayoutISO, toBeInserted.EndDate)
+
+				list = fmt.Sprintf("Jadwal pemakaian ruangan meeting/fun room untuk tanggal <b>%s</b> sampai <b>%s</b> sudah berhasil diset. Terima kasih", startD.Format(LayoutFullUser), endD.Format(LayoutFullUser))
 
 				var msg = tgbotapi.NewEditMessageText(
 					update.CallbackQuery.Message.Chat.ID,
 					update.CallbackQuery.Message.MessageID,
 					list,
 				)
+				msg.ParseMode = "HTML"
 				bot.Send(msg)
 				continue
 			case strings.Contains(data, "cancel_reservation"):

@@ -11,11 +11,14 @@ import (
 )
 
 const (
-	LayoutISO     = "2006-01-02T15:04:05+07:00"
-	LayoutTime    = "15:04"
-	LayoutTanggal = "2 January 2006"
-	LayoutSQL     = "2006-01-02"
-	LayoutFullSQL = "2006-01-02 15:04:05"
+	LayoutISO      = "2006-01-02T15:04:05+07:00"
+	LayoutTime     = "15:04"
+	LayoutHour     = "15"
+	LayoutMinute   = "04"
+	LayoutTanggal  = "2 January 2006"
+	LayoutSQL      = "2006-01-02"
+	LayoutFullSQL  = "2006-01-02 15:04:05"
+	LayoutFullUser = "2 January 2006 15:04"
 )
 
 var Db *gorm.DB
