@@ -277,10 +277,24 @@ func StartBot() {
 				day := resData[4]
 
 				//VALIDASI - Tanggal minimal hari ini
-				ns, _ := time.Parse(LayoutFullSQL, strconv.Itoa(yNow)+"-"+strconv.Itoa(int(mNow))+"-"+strconv.Itoa(dNow)+" "+tp.JamTerakhir+":"+tp.MenitTerakhir+":00")
-				srt, _ := time.Parse(LayoutFullSQL, year+"-"+month+"-"+day+" "+hr+":"+min+":00")
-				ns, _ = time.Parse(LayoutSQL, strconv.Itoa(yNow)+"-"+strconv.Itoa(int(mNow))+"-"+strconv.Itoa(dNow))
-				srt, _ = time.Parse(LayoutSQL, year+"-"+month+"-"+day)
+				//REFORMAT BULAN & TANGGAL
+				mo, _ := strconv.Atoi(month)
+				if mo < 10 {
+					month = "0" + month
+				}
+				da, _ := strconv.Atoi(day)
+				if da < 10 {
+					day = "0" + day
+				}
+				//REFORMAT BULAN & TANGGAL
+				// ns, _ := time.Parse(LayoutFullSQL, strconv.Itoa(yNow)+"-"+strconv.Itoa(int(mNow))+"-"+strconv.Itoa(dNow)+" "+tp.JamTerakhir+":"+tp.MenitTerakhir+":00")
+				// srt, _ := time.Parse(LayoutFullSQL, year+"-"+month+"-"+day+" "+hr+":"+min+":00")
+				ns, _ := time.Parse(LayoutSQL, strconv.Itoa(yNow)+"-"+strconv.Itoa(int(mNow))+"-"+strconv.Itoa(dNow))
+				srt, _ := time.Parse(LayoutSQL, year+"-"+month+"-"+day)
+
+				fmt.Printf("Data: %s", data)
+				fmt.Printf("Tanggal Hari Ini: %s", ns.Format(LayoutSQL))
+				fmt.Printf("Tanggal Dipilih: %s", srt.Format(LayoutSQL))
 
 				if !validDate(srt, ns) {
 					loader = "Mohon Pilih Tanggal minimal hari ini"
@@ -353,10 +367,44 @@ func StartBot() {
 					continue
 				}
 				continue
-			// case strings.Contains(data, "UPDATE-CALENDAR"):
-			// 	resData := tp.SeparateCallbackData(data)
-			// 	fmt.Println(tc.ProcessCalendarSelection(resData[2], &update))
-			// 	continue
+			case strings.Contains(data, "UPDATE-CALENDAR"):
+				loader = "Processing..."
+				bot.AnswerCallbackQuery(
+					tgbotapi.CallbackConfig{
+						CallbackQueryID: update.CallbackQuery.ID,
+						Text:            loader,
+					},
+				)
+
+				resData := tp.SeparateCallbackData(data)
+				selectorUpdate := resData[1]
+				tipeUpdate := resData[2]
+				yearUpdate, _ := strconv.ParseInt(resData[3], 10, 64)
+				monthUpdate, _ := strconv.ParseInt(resData[4], 10, 64)
+				selectedMonth := time.Date(int(yearUpdate), time.Month(monthUpdate), 1, 0, 0, 0, 0, time.Local)
+				selectorMonth := time.Time{}
+				switch selectorUpdate {
+				case "PREV-MONTH":
+					selectorMonth = selectedMonth.AddDate(0, -1, 0)
+
+				case "NEXT-MONTH":
+					selectorMonth = selectedMonth.AddDate(0, 1, 0)
+
+				}
+
+				var msg = tgbotapi.NewEditMessageText(
+					update.CallbackQuery.Message.Chat.ID,
+					update.CallbackQuery.Message.MessageID,
+					update.CallbackQuery.Message.Text,
+				)
+				var msgMarkup = tgbotapi.NewEditMessageReplyMarkup(
+					update.CallbackQuery.Message.Chat.ID,
+					update.CallbackQuery.Message.MessageID,
+					tc.CreateCalendar(tipeUpdate, selectorMonth.Year(), selectorMonth.Month()),
+				)
+				msg.ReplyMarkup = msgMarkup.ReplyMarkup
+				bot.Send(msg)
+				continue
 			case strings.Contains(data, "UPDATE-JAM-MULAI"):
 				loader = "Processing..."
 				bot.AnswerCallbackQuery(
@@ -455,14 +503,30 @@ func StartBot() {
 				month := resData[3]
 				day := resData[4]
 
+				//REFORMAT BULAN & TANGGAL
+				mo, _ := strconv.Atoi(month)
+				if mo < 10 {
+					month = "0" + month
+				}
+				da, _ := strconv.Atoi(day)
+				if da < 10 {
+					day = "0" + day
+				}
+				//REFORMAT BULAN & TANGGAL
+
 				//VALIDASI - Tanggal minimal sama dengan tanggal mulai
 				tempData := revMod.GetTemp(update.CallbackQuery.Message.Chat.ID)
 				dateTempMulai := strings.Split(tempData.DateStart, "T")
 				ns, _ := time.Parse(LayoutSQL, dateTempMulai[0])
 				srt, _ := time.Parse(LayoutSQL, year+"-"+month+"-"+day)
 
+				fmt.Printf("Tanggal Mulai Asli: %s \n", tempData.DateStart)
+				fmt.Printf("Tanggal Mulai Tanggal: %s \n", dateTempMulai[0])
+				fmt.Printf("Tanggal Mulai: %s \n", ns)
+				fmt.Printf("Tanggal Dipilih: %s \n", srt)
+
 				if !validDate(srt, ns) {
-					loader = fmt.Sprintf("Mohon Pilih Tanggal minimal Tanggal Mulai: %s", ns.Format(LayoutTanggal))
+					loader = fmt.Sprintf("Mohon pilih tanggal minimal tanggal mulai: %s", ns.Format(LayoutTanggal))
 					bot.AnswerCallbackQuery(
 						tgbotapi.CallbackConfig{
 							CallbackQueryID: update.CallbackQuery.ID,
