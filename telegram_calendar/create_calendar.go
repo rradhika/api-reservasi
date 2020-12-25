@@ -54,13 +54,13 @@ func (tc *TelegramCalendar) CreateCalendar(tipe string, year int, month time.Mon
 		keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, row)
 	}
 
-	// row = []tgbotapi.InlineKeyboardButton{}
-	// prevMonthCallbackData := createCallbackData("UPDATE-CALENDAR;PREV-MONTH;"+tipe, year, month, 0)
-	// nextMonthCallbackData := createCallbackData("UPDATE-CALENDAR;NEXT-MONTH;"+tipe, year, month, 0)
-	// row = append(row, tgbotapi.InlineKeyboardButton{Text: "<", CallbackData: &prevMonthCallbackData})
-	// row = append(row, tgbotapi.InlineKeyboardButton{Text: " ", CallbackData: &dataIgnore})
-	// row = append(row, tgbotapi.InlineKeyboardButton{Text: ">", CallbackData: &nextMonthCallbackData})
-	// keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, row)
+	row = []tgbotapi.InlineKeyboardButton{}
+	prevMonthCallbackData := createCallbackData("UPDATE-CALENDAR;PREV-MONTH;"+tipe, year, month, 0)
+	nextMonthCallbackData := createCallbackData("UPDATE-CALENDAR;NEXT-MONTH;"+tipe, year, month, 0)
+	row = append(row, tgbotapi.InlineKeyboardButton{Text: "<", CallbackData: &prevMonthCallbackData})
+	row = append(row, tgbotapi.InlineKeyboardButton{Text: " ", CallbackData: &dataIgnore})
+	row = append(row, tgbotapi.InlineKeyboardButton{Text: ">", CallbackData: &nextMonthCallbackData})
+	keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, row)
 
 	return keyboard
 
