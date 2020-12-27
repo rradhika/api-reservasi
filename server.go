@@ -674,6 +674,9 @@ func StartBot() {
 						list,
 					)
 					bot.Send(msg)
+
+					//DeleteTemporary data
+					revMod.DeleteTemp(update.CallbackQuery.Message.Chat.ID)
 					continue
 				}
 				//End Validate
@@ -697,6 +700,9 @@ func StartBot() {
 						list,
 					)
 					bot.Send(msg)
+
+					//DeleteTemporary data
+					revMod.DeleteTemp(update.CallbackQuery.Message.Chat.ID)
 					continue
 				}
 				//End Validate
@@ -721,6 +727,7 @@ func StartBot() {
 				}
 
 				_, err = revData.CreateData(&toBeInserted)
+				//DeleteTemporary data
 				revMod.DeleteTemp(update.CallbackQuery.Message.Chat.ID)
 
 				if err != nil {
