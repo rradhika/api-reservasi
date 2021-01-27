@@ -22,7 +22,7 @@ func (ReservationData) TableName() string {
 func (p *ReservationData) CheckWaktuEmployee(data *ReservationData) (ada bool) {
 	var emps []ReservationData
 	Db.
-		Raw("SELECT * FROM reservation_room WHERE (start_date <= ? OR end_date >= ?) AND employee_id = ? ", data.StartDate, data.EndDate, data.EmployeeID).
+		Raw("SELECT * FROM reservation_room WHERE (start_date >= ? AND start_date <= ?) OR (end_date >= ? AND end_date <= ?) AND employee_id = ? ", data.StartDate, data.EndDate, data.StartDate, data.EndDate, data.EmployeeID).
 		Scan(&emps)
 	ada = len(emps) == 0
 	return
@@ -32,7 +32,7 @@ func (p *ReservationData) CheckWaktuEmployee(data *ReservationData) (ada bool) {
 func (p *ReservationData) CheckWaktuRuangan(data *ReservationData) (ada bool) {
 	var emps []ReservationData
 	Db.
-		Raw("SELECT * FROM reservation_room WHERE (start_date <= ? OR end_date >= ?) AND room_id = ? ", data.StartDate, data.EndDate, data.RoomID).
+		Raw("SELECT * FROM reservation_room WHERE (start_date >= ? AND start_date <= ?) OR (end_date >= ? AND end_date <= ?) AND room_id = ? ", data.StartDate, data.EndDate, data.StartDate, data.EndDate, data.RoomID).
 		Scan(&emps)
 	ada = len(emps) == 0
 	return

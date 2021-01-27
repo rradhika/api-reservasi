@@ -95,22 +95,21 @@ func AuthBot() {
 //StartBot where the command and text processed
 func StartBot() {
 
-	//Declare tanggal sekarang
-	yNow, mNow, dNow := time.Now().Date()
-
-	nowRaw := time.Now()
-	timeStampString := nowRaw.Format(LayoutFullSQL)
-	timeStamp, _ := time.Parse(LayoutFullSQL, timeStampString)
-	hr, min := timeStamp.Format(LayoutHour), timeStamp.Format(LayoutMinute)
-
-	model := models.Employee{}
-	roomsMod := models.Room{}
-	revMod := models.Reservation{}
-	revData := models.ReservationData{}
-
 	tc := TelegramCalendar{}
 
 	for update := range updChannel {
+		//Declare tanggal sekarang
+		yNow, mNow, dNow := time.Now().Date()
+
+		nowRaw := time.Now()
+		timeStampString := nowRaw.Format(LayoutFullSQL)
+		timeStamp, _ := time.Parse(LayoutFullSQL, timeStampString)
+		hr, min := timeStamp.Format(LayoutHour), timeStamp.Format(LayoutMinute)
+
+		model := models.Employee{}
+		roomsMod := models.Room{}
+		revMod := models.Reservation{}
+		revData := models.ReservationData{}
 
 		if update.Message == nil && update.CallbackQuery == nil {
 			continue
@@ -133,6 +132,8 @@ func StartBot() {
 
 			now := time.Now().Format(LayoutTanggal)
 
+			employees := model.GetEmployee(update.CallbackQuery.From.UserName)
+
 			//Contains:
 			//check_schedule: to check schedule
 			//reserve_place: to reserve new meeting room
@@ -154,7 +155,7 @@ func StartBot() {
 				if !checkSchedule {
 					list += "Pemakaian ruang meeting dan fun room " + now + " masih kosong"
 				} else {
-					room = roomsMod.MeetingRoom("yogyakarta")
+					room = roomsMod.MeetingRoom(employees.Location)
 					list += "<b>Pemakaian ruang meeting dan fun room " + now + ":</b> \n\n"
 					for _, rm := range room {
 						list += "<b>" + rm.Name + "</b> :  \n"
@@ -289,10 +290,11 @@ func StartBot() {
 				//REFORMAT BULAN & TANGGAL
 				// ns, _ := time.Parse(LayoutFullSQL, strconv.Itoa(yNow)+"-"+strconv.Itoa(int(mNow))+"-"+strconv.Itoa(dNow)+" "+tp.JamTerakhir+":"+tp.MenitTerakhir+":00")
 				// srt, _ := time.Parse(LayoutFullSQL, year+"-"+month+"-"+day+" "+hr+":"+min+":00")
-				ns, _ := time.Parse(LayoutSQL, strconv.Itoa(yNow)+"-"+strconv.Itoa(int(mNow))+"-"+strconv.Itoa(dNow))
+				ns, _ := time.Parse(LayoutSQL, nowRaw.Format(LayoutSQL))
 				srt, _ := time.Parse(LayoutSQL, year+"-"+month+"-"+day)
 
 				fmt.Printf("Data: %s", data)
+				fmt.Printf("yNow: %s", strconv.Itoa(yNow)+"-"+strconv.Itoa(int(mNow))+"-"+strconv.Itoa(dNow))
 				fmt.Printf("Tanggal Hari Ini: %s", ns.Format(LayoutSQL))
 				fmt.Printf("Tanggal Dipilih: %s", srt.Format(LayoutSQL))
 
@@ -646,11 +648,10 @@ func StartBot() {
 				}
 
 				tempData = revMod.GetTemp(update.CallbackQuery.Message.Chat.ID)
-				emp := model.GetEmployee(update.CallbackQuery.From.UserName)
 
 				//VALIDASI PENGGUNAAN RUANGAN
 				toBeSearch := models.ReservationData{
-					EmployeeID: emp.Esid,
+					EmployeeID: employees.Esid,
 					RoomID:     tempData.RoomID,
 					StartDate:  tempData.DateStart,
 					EndDate:    tempData.DateEnd,
@@ -720,7 +721,7 @@ func StartBot() {
 				}
 
 				toBeInserted := models.ReservationData{
-					EmployeeID: emp.Esid,
+					EmployeeID: employees.Esid,
 					RoomID:     tempData.RoomID,
 					StartDate:  tempData.DateStart,
 					EndDate:    tempData.DateEnd,

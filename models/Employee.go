@@ -14,6 +14,7 @@ type Employee struct {
 	StartDate      string `db:"start_date"`
 	EndDate        string `db:"end_date"`
 	RoomName       string `db:"room_name"`
+	Location       string `db:"location"`
 }
 
 func (Employee) TableName() string {
